@@ -590,14 +590,23 @@ const page = String.raw`<!doctype html>
         const role = p.role || 'hidden';
         const roleClass = p.role || '';
         row.innerHTML = `
-          <div>
-            <div style="font-weight:800; font-size:16px;">${escapeHtml(p.name)} ${p.id === meId ? '<span class="badge me">you</span>' : ''}</div>
-            <div class="small">${p.connected ? 'Connected' : 'Offline'} • ${p.isAdmin ? 'Admin' : 'Player'}</div>
-          </div>
-          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
-            <span class="badge ${p.isAdmin ? 'admin' : ''}">${p.isAdmin ? 'Admin' : 'Player'}</span>
-            <span class="badge ${roleClass}">${p.role ? p.role : 'role hidden'}</span>
-          </div>
+  <div>
+    <div style="font-weight:800; font-size:16px;">
+      ${escapeHtml(p.name)} ${p.id === meId ? '<span class="badge me">you</span>' : ''}
+    </div>
+    <div class="small">
+      ${p.connected ? 'Connected' : 'Offline'} • ${p.isAdmin ? 'Admin' : 'Player'}
+    </div>
+  </div>
+  <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
+    <span class="badge ${p.isAdmin ? 'admin' : ''}">
+      ${p.isAdmin ? 'Admin' : 'Player'}
+    </span>
+    <span class="badge ${p.role || ''}">
+      ${p.role ? p.role : 'role hidden'}
+    </span>
+  </div>
+`;
         `;
         list.appendChild(row);
       }
