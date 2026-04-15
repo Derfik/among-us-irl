@@ -1,0 +1,8 @@
+{
+  "name": "among-us-irl",
+  "version": "1.0.0",
+  "main": "among-us-irl-server.js",
+  "scripts": {
+    "start": "node among-us-irl-server.js"
+  }
+}
