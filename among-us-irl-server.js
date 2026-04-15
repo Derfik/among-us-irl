@@ -484,23 +484,9 @@ const page = String.raw`<!doctype html>
   </div>
 
   <script>
-const state = {
-  roomId: null,
-  playerId: null,
-  adminToken: null,
-  name: localStorage.getItem('amongus_name') || '',
-  roomLink: null,
-  sse: null,
-  current: null,
-};
+const state = {};
 
 const el = id => document.getElementById(id);
-
-function setMessage(text, type='') {
-  const box = el('messageBox');
-  box.className = 'msg' + (type ? ' ' + type : '');
-  box.textContent = text;
-}
 
 async function api(path, body) {
   const res = await fetch(path, {
@@ -510,8 +496,7 @@ async function api(path, body) {
   });
 
   if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text);
+    throw new Error(await res.text());
   }
 
   return res.json();
@@ -520,51 +505,34 @@ async function api(path, body) {
 function connectSSE(roomId, playerId) {
   if (state.sse) state.sse.close();
 
-  const params = new URLSearchParams({roomId, playerId});
-  const sse = new EventSource('/events?' + params.toString());
+  const sse = new EventSource(`/events?roomId=${roomId}&playerId=${playerId}`);
   state.sse = sse;
 
-  sse.addEventListener('state', ev => {
-    const data = JSON.parse(ev.data);
-    updateUI(data);
+  sse.addEventListener('state', e => {
+    const data = JSON.parse(e.data);
+
+    el('playersList').innerHTML = '';
+    data.players.forEach(p => {
+      const div = document.createElement('div');
+      div.textContent = p.name;
+      el('playersList').appendChild(div);
+    });
+
+    el('roomCodeText').textContent = data.roomId;
+    el('shareLinkText').textContent = location.origin + '/?room=' + data.roomId;
   });
-}
-
-function updateUI(data) {
-  state.current = data;
-
-  el('roomCodeText').textContent = data.roomId;
-  el('shareLinkText').textContent = location.origin + '/?room=' + data.roomId;
-
-  el('kPlayers').textContent = data.counts.total;
-
-  const list = el('playersList');
-  list.innerHTML = '';
-
-  for (const p of data.players) {
-    const div = document.createElement('div');
-    div.textContent = p.name + (p.isAdmin ? ' (admin)' : '');
-    list.appendChild(div);
-  }
 }
 
 async function createRoom() {
   try {
     const name = el('nameInput').value || 'Admin';
 
-    const result = await api('/api/create-room', {name});
+    const res = await api('/api/create-room', {name});
 
-    state.roomId = result.roomId;
-    state.playerId = result.playerId;
-    state.adminToken = result.adminToken;
+    connectSSE(res.roomId, res.playerId);
 
-    connectSSE(result.roomId, result.playerId);
-
-    setMessage('Room created!', 'ok');
-
-  } catch (err) {
-    console.error(err);
-    setMessage(err.message, 'error');
+  } catch (e) {
+    alert(e.message);
   }
 }
 
@@ -573,15 +541,12 @@ async function joinRoom() {
     const name = el('nameInput').value;
     const roomId = el('roomInput').value;
 
-    const result = await api('/api/join', {name, roomId});
+    const res = await api('/api/join', {name, roomId});
 
-    state.roomId = result.roomId;
-    state.playerId = result.playerId;
+    connectSSE(res.roomId, res.playerId);
 
-    connectSSE(result.roomId, result.playerId);
-
-  } catch (err) {
-    setMessage(err.message, 'error');
+  } catch (e) {
+    alert(e.message);
   }
 }
 
