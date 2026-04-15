@@ -170,7 +170,13 @@ function assignRoles(room, impostorsCount, crewmatesCount) {
     p.role = impostors.has(p.id) ? 'impostor' : 'crewmate';
   }
 }
-
+function showRoomShell(isAdmin) {
+  joinView.classList.add('hide');
+  gameView.classList.remove('hide');
+  adminView.classList.toggle('hide', !isAdmin);
+  nonAdminView.classList.toggle('hide', isAdmin);
+  el('mainTitle').textContent = 'Game lobby';
+}
 function createRoomWithAdmin(name) {
   const roomId = id(6);
   const adminToken = crypto.randomBytes(16).toString('hex');
@@ -284,6 +290,17 @@ async function createRoom() {
     const name = el('nameInput').value || 'Admin';
 
     const res = await api('/api/create-room', { name });
+    state.roomId = res.roomId;
+state.playerId = res.playerId;
+state.adminToken = res.adminToken;
+
+showRoomShell(true);
+
+el('roomCodeText').textContent = res.roomId;
+el('shareLinkText').textContent = location.origin + res.roomLink;
+
+connectSSE(res.roomId, res.playerId);
+setMessage('Room created. Share the link with your friends.', 'ok');
 
     // 👉 důležité: uložit do state
     state.roomId = res.roomId;
@@ -307,6 +324,16 @@ async function joinRoom() {
     const roomId = el('roomInput').value;
 
     const res = await api('/api/join', { name, roomId });
+    state.roomId = res.roomId;
+state.playerId = res.playerId;
+
+showRoomShell(false);
+
+el('roomCodeText').textContent = res.roomId;
+el('shareLinkText').textContent = location.origin + '/?room=' + res.roomId;
+
+connectSSE(res.roomId, res.playerId);
+setMessage('Joined the room.', 'ok');
 
     connectSSE(res.roomId, res.playerId);
 
