@@ -973,5 +973,5 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`Among Us IRL app running on http://localhost:${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
