@@ -127,32 +127,34 @@ function requireAdmin(room, adminToken) {
 
 function assignRoles(room, impostorsCount, crewmatesCount) {
   const activePlayers = room.players.filter(p => p.connected);
+
   const total = activePlayers.length;
 
   if (impostorsCount + crewmatesCount !== total) {
-    const err = new Error(`Role counts must equal total connected players (${total}).`);
-    err.statusCode = 400;
-    throw err;
-  }
-  if (impostorsCount < 1) {
-    const err = new Error('There must be at least 1 impostor.');
-    err.statusCode = 400;
-    throw err;
-  }
-  if (crewmatesCount < 1) {
-    const err = new Error('There must be at least 1 crewmate.');
-    err.statusCode = 400;
-    throw err;
+    throw new Error(`Role counts must equal total connected players (${total}).`);
   }
 
+  if (impostorsCount < 1) {
+    throw new Error('There must be at least 1 impostor.');
+  }
+
+  if (crewmatesCount < 1) {
+    throw new Error('There must be at least 1 crewmate.');
+  }
+
+  // 🔥 admin je normální hráč → JE V TOM
   const shuffled = [...activePlayers].sort(() => Math.random() - 0.5);
-  const impostors = new Set(shuffled.slice(0, impostorsCount).map(p => p.id));
+
+  const impostors = new Set(
+    shuffled.slice(0, impostorsCount).map(p => p.id)
+  );
 
   for (const p of room.players) {
     if (!p.connected) {
       p.role = null;
       continue;
     }
+
     p.role = impostors.has(p.id) ? 'impostor' : 'crewmate';
   }
 }
