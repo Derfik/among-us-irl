@@ -604,6 +604,10 @@ const page = String.raw`<!doctype html>
       roomBadge.textContent = data.roomId ? 'Room ' + data.roomId : 'No room';
       el('roomCodeText').textContent = data.roomId || '—';
       el('shareLinkText').textContent = state.roomLink;
+      const qr = el('qrCode');
+if (qr && state.roomLink) {
+  qr.src = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(state.roomLink);
+}
       el('copyLinkBtn').disabled = !state.roomLink;
       el('copyRoomBtn').disabled = !data.roomId;
 
