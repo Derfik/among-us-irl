@@ -542,7 +542,7 @@ const page = String.raw`<!doctype html>
         html += '<div class="small">' + (p.connected ? 'Connected' : 'Offline') + ' • ' + (p.isAdmin ? 'Admin' : 'Player') + '</div>';
         html += '</div>';
         html += '<div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">';
-        html += '<span class="badge ' + (p.isAdmin ? 'admin' : '') + '">' + (p.isAdmin ? 'Admin' : 'Player') + '</span>';
+        html += '<span class="badge ' + (p.isAdmin ? 'admin' : '') + '">' + (p.isAdmin ? 'Admin 👑' : 'Player') + '</span>';
         html += '<span class="badge ' + (p.role || '') + '">' + (p.role ? p.role : 'role hidden') + '</span>';
         html += '</div>';
 
