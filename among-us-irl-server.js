@@ -678,6 +678,21 @@ const page = String.raw`<!doctype html>
       state.playerId = result.playerId;
       state.roomId = result.roomId;
       connectSSE(result.roomId, result.playerId);
+      updateUI({
+  roomId: result.roomId,
+  started: false,
+  meeting: false,
+  players: [],
+  counts: { total: 1, connected: 1, impostors: 0, crewmates: 0 },
+  settings: { impostors: 1, crewmates: 1 },
+  me: {
+    id: result.playerId,
+    name: name,
+    isAdmin: true,
+    role: null
+  },
+  shareUrl: location.origin + '/?room=' + result.roomId
+});
       history.replaceState({}, '', '/?room=' + encodeURIComponent(result.roomId) + '&player=' + encodeURIComponent(result.playerId) + (state.adminToken ? '&admin=' + encodeURIComponent(state.adminToken) : ''));
       setMessage('Joined the room.', 'ok');
     }
