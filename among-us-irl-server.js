@@ -282,9 +282,19 @@ function connectSSE(roomId, playerId) {
 async function createRoom() {
   try {
     const name = el('nameInput').value || 'Admin';
+
     const res = await api('/api/create-room', { name });
 
+    // 👉 důležité: uložit do state
+    state.roomId = res.roomId;
+    state.playerId = res.playerId;
+
+    // 👉 připojit realtime
     connectSSE(res.roomId, res.playerId);
+
+    // 👉 RUČNĚ zobrazit link (to ti teď chybí)
+    el('roomCodeText').textContent = res.roomId;
+    el('shareLinkText').textContent = location.origin + res.roomLink;
 
   } catch (e) {
     alert(e.message);
