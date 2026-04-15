@@ -484,377 +484,110 @@ const page = String.raw`<!doctype html>
   </div>
 
   <script>
-    const state = {
-      roomId: null,
-      playerId: null,
-      adminToken: null,
-      name: localStorage.getItem('amongus_name') || '',
-      roomLink: null,
-      sse: null,
-      current: null,
-      meetingWasActive: false,
-    };
+const state = {
+  roomId: null,
+  playerId: null,
+  adminToken: null,
+  name: localStorage.getItem('amongus_name') || '',
+  roomLink: null,
+  sse: null,
+  current: null,
+};
 
-    const el = function(id) { return document.getElementById(id); };
-    const joinView = el('joinView');
-    const gameView = el('gameView');
-    const adminView = el('adminView');
-    const nonAdminView = el('nonAdminView');
-    const roomBadge = el('roomBadge');
-    const meetingOverlay = el('meetingOverlay');
-    const meetingBar = el('meetingBar');
-    const meetingNotice = el('meetingNotice');
-    const adminMeetingControls = el('adminMeetingControls');
+const el = id => document.getElementById(id);
 
-    el('nameInput').value = state.name;
+function setMessage(text, type='') {
+  const box = el('messageBox');
+  box.className = 'msg' + (type ? ' ' + type : '');
+  box.textContent = text;
+}
 
-    function setMessage(text, type) {
-      const box = el('messageBox');
-      box.className = 'msg' + (type ? ' ' + type : '');
-      box.textContent = text;
-    }
-
-    function escapeHtml(str) {
-      return String(str)
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#039;');
-    }
-
-    function renderPlayers(players, meId) {
-      const list = el('playersList');
-      list.innerHTML = '';
-
-      if (!players || !players.length) {
-        list.innerHTML = '<div class="muted">No players yet.</div>';
-        return;
-      }
-
-      for (const p of players) {
-        const row = document.createElement('div');
-        row.className = 'player';
-
-        let html = '';
-        html += '<div>';
-        html += '<div style="font-weight:800; font-size:16px;">';
-        html += escapeHtml(p.name);
-        if (p.id === meId) html += ' <span class="badge me">you</span>';
-        html += '</div>';
-        html += '<div class="small">' + (p.connected ? 'Connected' : 'Offline') + ' • ' + (p.isAdmin ? 'Admin' : 'Player') + '</div>';
-        html += '</div>';
-        html += '<div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">';
-        html += '<span class="badge ' + (p.isAdmin ? 'admin' : '') + '">' + (p.isAdmin ? 'Admin' : 'Player') + '</span>';
-        html += '<span class="badge ' + (p.role || '') + '">' + (p.role ? p.role : 'role hidden') + '</span>';
-        html += '</div>';
-
-        row.innerHTML = html;
-        list.appendChild(row);
-      }
-    }
-
-    function playAlarm() {
-      try {
-        const AudioCtx = window.AudioContext || window.webkitAudioContext;
-        const ctx = new AudioCtx();
-        const gain = ctx.createGain();
-        gain.gain.value = 0.03;
-        gain.connect(ctx.destination);
-
-        let t = ctx.currentTime;
-        for (let i = 0; i < 6; i++) {
-          const osc = ctx.createOscillator();
-          osc.type = 'square';
-          osc.frequency.setValueAtTime(i % 2 === 0 ? 880 : 660, t);
-          osc.connect(gain);
-          osc.start(t);
-          osc.stop(t + 0.15);
-          t += 0.18;
-        }
-        setTimeout(() => ctx.close().catch(() => {}), 2000);
-      } catch (e) {
-        console.warn('Audio failed', e);
-      }
-    }
-
-    async function api(path, body) {
-      const res = await fetch(path, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || 'Request failed');
-      return data;
-    }
-
-    function updateUI(data) {
-      state.current = data;
-      state.roomId = data.roomId;
-      state.roomLink = data.shareUrl || (location.origin + '/?room=' + encodeURIComponent(data.roomId));
-
-      roomBadge.textContent = data.roomId ? 'Room ' + data.roomId : 'No room';
-      el('roomCodeText').textContent = data.roomId || '—';
-      el('shareLinkText').textContent = state.roomLink;
-      el('copyLinkBtn').disabled = !state.roomLink;
-      el('copyRoomBtn').disabled = !data.roomId;
-
-      const me = data.me;
-      const isAdmin = !!(me && me.isAdmin);
-      const started = !!data.started;
-      const meeting = !!data.meeting;
-
-      joinView.classList.toggle('hide', !!me);
-      gameView.classList.toggle('hide', !me);
-      adminView.classList.toggle('hide', !isAdmin);
-      nonAdminView.classList.toggle('hide', isAdmin);
-      el('mainTitle').textContent = me ? 'Game lobby' : 'Join or create a room';
-
-      el('kPlayers').textContent = data.counts.total;
-      el('kConnected').textContent = data.counts.connected;
-      el('kImpostors').textContent = data.counts.impostors;
-      el('kCrewmates').textContent = data.counts.crewmates;
-
-      if (!me) {
-        el('roleText').textContent = '—';
-        el('roleText').className = 'role';
-        el('roleDesc').textContent = 'Join the room to get your role.';
-      } else if (!started) {
-        el('roleText').textContent = 'Waiting';
-        el('roleText').className = 'role';
-        el('roleDesc').textContent = 'You are in the lobby. The admin will start the game.';
-      } else {
-        el('roleText').textContent = me.role ? me.role : 'Unknown';
-        el('roleText').className = 'role ' + (me.role || '');
-        el('roleDesc').textContent = me.role === 'impostor'
-          ? 'You are an impostor. Blend in.'
-          : 'You are a crewmate. Complete the mission.';
-      }
-
-      meetingOverlay.classList.toggle('show', meeting);
-      meetingNotice.classList.toggle('hide', !meeting);
-      meetingBar.classList.toggle('show', !!me && started);
-      adminMeetingControls.classList.toggle('hide', !isAdmin);
-
-      renderPlayers(data.players, me ? me.id : null);
-
-      if (meeting && !state.meetingWasActive) {
-        playAlarm();
-      }
-      state.meetingWasActive = meeting;
-
-      if (!started) {
-        setMessage('The lobby is ready. Wait for the admin to start the game.');
-      } else if (meeting) {
-        setMessage('Meeting is active. The game is paused until the admin ends it.', 'error');
-      } else if (me && me.role) {
-        setMessage('Role assigned successfully. Use the MEETING button only when needed.', 'ok');
-      }
-    }
-
-   function connectSSE(roomId, playerId) {
-  if (state.sse) {
-    state.sse.close();
-  }
-
-  const params = new URLSearchParams({
-    roomId: roomId,
-    playerId: playerId || ''
+async function api(path, body) {
+  const res = await fetch(path, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(body),
   });
 
-  if (state.adminToken) {
-    params.set('adminToken', state.adminToken);
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text);
   }
 
+  return res.json();
+}
+
+function connectSSE(roomId, playerId) {
+  if (state.sse) state.sse.close();
+
+  const params = new URLSearchParams({roomId, playerId});
   const sse = new EventSource('/events?' + params.toString());
   state.sse = sse;
 
-  // 🔥 TOTO JE KLÍČOVÉ
-  sse.addEventListener('state', (ev) => {
+  sse.addEventListener('state', ev => {
     const data = JSON.parse(ev.data);
     updateUI(data);
   });
-
-  sse.onerror = () => {
-    roomBadge.textContent = 'Reconnecting…';
-  };
 }
 
-      sse.onerror = function() {
-        roomBadge.textContent = 'Reconnecting…';
-      };
-    }
+function updateUI(data) {
+  state.current = data;
 
-    async function joinRoom(roomId, name) {
-      localStorage.setItem('amongus_name', name);
-      const payload = { roomId: roomId, name: name };
-      const result = await api('/api/join', payload);
-      state.playerId = result.playerId;
-      state.roomId = result.roomId;
-      connectSSE(result.roomId, result.playerId);
-      updateUI({
-  roomId: result.roomId,
-  started: false,
-  meeting: false,
-  players: [],
-  counts: { total: 1, connected: 1, impostors: 0, crewmates: 0 },
-  settings: { impostors: 1, crewmates: 1 },
-  me: {
-    id: result.playerId,
-    name: name,
-    isAdmin: true,
-    role: null
-  },
-  shareUrl: location.origin + '/?room=' + result.roomId
-});
-      history.replaceState({}, '', '/?room=' + encodeURIComponent(result.roomId) + '&player=' + encodeURIComponent(result.playerId) + (state.adminToken ? '&admin=' + encodeURIComponent(state.adminToken) : ''));
-      setMessage('Joined the room.', 'ok');
-    }
+  el('roomCodeText').textContent = data.roomId;
+  el('shareLinkText').textContent = location.origin + '/?room=' + data.roomId;
 
-    async function createRoom() {
-      const name = el('nameInput').value.trim() || 'Admin';
-      localStorage.setItem('amongus_name', name);
-      const result = await api('/api/create-room', { name: name });
-      state.playerId = result.playerId;
-      state.roomId = result.roomId;
-      state.adminToken = result.adminToken;
-      connectSSE(result.roomId, result.playerId);
-      history.replaceState({}, '', result.adminLink);
-      setMessage('Room created. Share the link with your friends.', 'ok');
-    }
+  el('kPlayers').textContent = data.counts.total;
 
-    async function startGame() {
-      const impostors = Number(el('impostorCount').value || 0);
-      const crewmates = Number(el('crewmateCount').value || 0);
-      await api('/api/start', {
-        roomId: state.roomId,
-        playerId: state.playerId,
-        adminToken: state.adminToken,
-        impostors: impostors,
-        crewmates: crewmates,
-      });
-      setMessage('Game started.', 'ok');
-    }
+  const list = el('playersList');
+  list.innerHTML = '';
 
-    async function endMeeting() {
-      await api('/api/end-meeting', {
-        roomId: state.roomId,
-        playerId: state.playerId,
-        adminToken: state.adminToken,
-      });
-      setMessage('Meeting ended.', 'ok');
-    }
+  for (const p of data.players) {
+    const div = document.createElement('div');
+    div.textContent = p.name + (p.isAdmin ? ' (admin)' : '');
+    list.appendChild(div);
+  }
+}
 
-    async function triggerMeeting() {
-      await api('/api/meeting', {
-        roomId: state.roomId,
-        playerId: state.playerId,
-      });
-      setMessage('Meeting called.', 'error');
-    }
+async function createRoom() {
+  try {
+    const name = el('nameInput').value || 'Admin';
 
-    async function copyText(text) {
-      try {
-        await navigator.clipboard.writeText(text);
-        setMessage('Copied to clipboard.', 'ok');
-      } catch {
-        setMessage('Copy failed. Select and copy the text manually.', 'error');
-      }
-    }
+    const result = await api('/api/create-room', {name});
 
-    function leaveRoom() {
-      if (state.sse) state.sse.close();
-      state.sse = null;
-      state.roomId = null;
-      state.playerId = null;
-      state.current = null;
-      state.meetingWasActive = false;
-      history.replaceState({}, '', '/');
-      location.reload();
-    }
+    state.roomId = result.roomId;
+    state.playerId = result.playerId;
+    state.adminToken = result.adminToken;
 
-    el('joinBtn').addEventListener('click', async function() {
-      try {
-        const name = el('nameInput').value.trim();
-        const roomId = el('roomInput').value.trim().toUpperCase();
-        if (!name) return setMessage('Write your name first.', 'error');
-        if (!roomId) return setMessage('Write the room code first.', 'error');
-        await joinRoom(roomId, name);
-      } catch (err) {
-        setMessage(err.message, 'error');
-      }
-    });
+    connectSSE(result.roomId, result.playerId);
 
-    el('createBtn').addEventListener('click', async function() {
-      try {
-        await createRoom();
-      } catch (err) {
-        setMessage(err.message, 'error');
-      }
-    });
+    setMessage('Room created!', 'ok');
 
-    el('startBtn').addEventListener('click', async function() {
-      try {
-        await startGame();
-      } catch (err) {
-        setMessage(err.message, 'error');
-      }
-    });
+  } catch (err) {
+    console.error(err);
+    setMessage(err.message, 'error');
+  }
+}
 
-    el('endMeetingBtn').addEventListener('click', async function() {
-      try {
-        await endMeeting();
-      } catch (err) {
-        setMessage(err.message, 'error');
-      }
-    });
+async function joinRoom() {
+  try {
+    const name = el('nameInput').value;
+    const roomId = el('roomInput').value;
 
-    el('endMeetingBtnSide').addEventListener('click', async function() {
-      try {
-        await endMeeting();
-      } catch (err) {
-        setMessage(err.message, 'error');
-      }
-    });
+    const result = await api('/api/join', {name, roomId});
 
-    el('meetingBtn').addEventListener('click', async function() {
-      try {
-        await triggerMeeting();
-      } catch (err) {
-        setMessage(err.message, 'error');
-      }
-    });
+    state.roomId = result.roomId;
+    state.playerId = result.playerId;
 
-    el('copyRoomBtn').addEventListener('click', function() {
-      const code = state.current && state.current.roomId;
-      if (code) copyText(code);
-    });
+    connectSSE(result.roomId, result.playerId);
 
-    el('copyLinkBtn').addEventListener('click', function() {
-      if (state.roomLink) copyText(state.roomLink);
-    });
+  } catch (err) {
+    setMessage(err.message, 'error');
+  }
+}
 
-    el('leaveBtn').addEventListener('click', leaveRoom);
-
-    (function init() {
-      const params = new URLSearchParams(location.search);
-      const room = (params.get('room') || '').trim().toUpperCase();
-      const player = (params.get('player') || '').trim();
-      const admin = (params.get('admin') || '').trim();
-      if (admin) state.adminToken = admin;
-
-      if (room && player) {
-        state.roomId = room;
-        state.playerId = player;
-        connectSSE(room, player);
-        return;
-      }
-
-      if (room) el('roomInput').value = room;
-      if (state.name) el('nameInput').value = state.name;
-    })();
-  </script>
+el('createBtn').onclick = createRoom;
+el('joinBtn').onclick = joinRoom;
+</script>
 </body>
 </html>`;
 
