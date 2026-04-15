@@ -667,34 +667,17 @@ const page = String.raw`<!doctype html>
     params.set('adminToken', state.adminToken);
   }
 
-  const url = '/events?' + params.toString();
-
-  console.log("SSE connecting to:", url); // debug
-
-  const sse = new EventSource(url);
+  const sse = new EventSource('/events?' + params.toString());
   state.sse = sse;
 
-  sse.onopen = () => {
-    console.log("SSE connected ✅");
-  };
+  // 🔥 TOTO JE KLÍČOVÉ
+  sse.addEventListener('state', (ev) => {
+    const data = JSON.parse(ev.data);
+    updateUI(data);
+  });
 
-  sse.onmessage = (ev) => {
-    try {
-      const data = JSON.parse(ev.data);
-      updateUI(data);
-    } catch (e) {
-      console.error("SSE parse error", e);
-    }
-  };
-
-  sse.onerror = (err) => {
-    console.log("SSE error ❌ reconnecting...");
+  sse.onerror = () => {
     roomBadge.textContent = 'Reconnecting…';
-
-    // reconnect po 2s
-    setTimeout(() => {
-      connectSSE(roomId, playerId);
-    }, 2000);
   };
 }
 
