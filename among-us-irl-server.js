@@ -578,37 +578,38 @@ const page = String.raw`<!doctype html>
     }
 
     function renderPlayers(players, meId, isAdmin) {
-      const list = el('playersList');
-      list.innerHTML = '';
-      if (!players || !players.length) {
-        list.innerHTML = '<div class="muted">No players yet.</div>';
-        return;
-      }
-      for (const p of players) {
-        const row = document.createElement('div');
-        row.className = 'player';
-        const role = p.role || 'hidden';
-        const roleClass = p.role || '';
-        row.innerHTML = `
-  <div>
-    <div style="font-weight:800; font-size:16px;">
-      ${escapeHtml(p.name)} ${p.id === meId ? '<span class="badge me">you</span>' : ''}
-    </div>
-    <div class="small">
-      ${p.connected ? 'Connected' : 'Offline'} • ${p.isAdmin ? 'Admin' : 'Player'}
-    </div>
-  </div>
-  <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
-    <span class="badge ${p.isAdmin ? 'admin' : ''}">
-      ${p.isAdmin ? 'Admin' : 'Player'}
-    </span>
-    <span class="badge ${p.role || ''}">
-      ${p.role ? p.role : 'role hidden'}
-    </span>
-  </div>
-`;
-        `;
-        list.appendChild(row);
+  const list = el('playersList');
+  list.innerHTML = '';
+
+  if (!players || !players.length) {
+    list.innerHTML = '<div class="muted">No players yet.</div>';
+    return;
+  }
+
+  for (const p of players) {
+    const row = document.createElement('div');
+    row.className = 'player';
+
+    row.innerHTML = `
+      <div>
+        <div style="font-weight:800; font-size:16px;">
+          ${escapeHtml(p.name)} ${p.id === meId ? '<span class="badge me">you</span>' : ''}
+        </div>
+        <div class="small">
+          ${p.connected ? 'Connected' : 'Offline'} • ${p.isAdmin ? 'Admin' : 'Player'}
+        </div>
+      </div>
+      <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
+        <span class="badge ${p.isAdmin ? 'admin' : ''}">
+          ${p.isAdmin ? 'Admin' : 'Player'}
+        </span>
+        <span class="badge ${p.role || ''}">
+          ${p.role ? p.role : 'role hidden'}
+        </span>
+      </div>
+    `;
+
+    list.appendChild(row);
       }
     }
 
