@@ -653,18 +653,50 @@ const page = String.raw`<!doctype html>
       }
     }
 
-    function connectSSE(roomId, playerId) {
-      if (state.sse) state.sse.close();
-      const params = new URLSearchParams({ roomId: roomId, playerId: playerId || '' });
-      if (state.adminToken) params.set('adminToken', state.adminToken);
+   function connectSSE(roomId, playerId) {
+  if (state.sse) {
+    state.sse.close();
+  }
 
-      const sse = new EventSource('/events?' + params.toString());
-      state.sse = sse;
+  const params = new URLSearchParams({
+    roomId: roomId,
+    playerId: playerId || ''
+  });
 
-      sse.addEventListener('state', function(ev) {
-        const data = JSON.parse(ev.data);
-        updateUI(data);
-      });
+  if (state.adminToken) {
+    params.set('adminToken', state.adminToken);
+  }
+
+  const url = '/events?' + params.toString();
+
+  console.log("SSE connecting to:", url); // debug
+
+  const sse = new EventSource(url);
+  state.sse = sse;
+
+  sse.onopen = () => {
+    console.log("SSE connected ✅");
+  };
+
+  sse.onmessage = (ev) => {
+    try {
+      const data = JSON.parse(ev.data);
+      updateUI(data);
+    } catch (e) {
+      console.error("SSE parse error", e);
+    }
+  };
+
+  sse.onerror = (err) => {
+    console.log("SSE error ❌ reconnecting...");
+    roomBadge.textContent = 'Reconnecting…';
+
+    // reconnect po 2s
+    setTimeout(() => {
+      connectSSE(roomId, playerId);
+    }, 2000);
+  };
+}
 
       sse.onerror = function() {
         roomBadge.textContent = 'Reconnecting…';
