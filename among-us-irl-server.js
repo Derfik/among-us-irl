@@ -47,8 +47,7 @@ function publicPlayer(p, viewerId, isAdmin) {
     id: p.id,
     name: p.name,
     connected: p.connected,
-    role: p.id === viewerId || isAdmin ? p.role : undefined,
-    isAdmin: !!p.isAdmin,
+    role: p.id === viewerId ? p.role : undefined,    isAdmin: !!p.isAdmin,
   };
 }
 
@@ -456,6 +455,10 @@ const page = String.raw`<!doctype html>
             <button class="ghost" id="copyRoomBtn">Copy</button>
           </div>
           <div class="codebox" style="margin-top:10px;">
+          <div style="margin-top:12px; text-align:center;">
+  <div class="small">Scan to join</div>
+  <img id="qrCode" style="margin-top:8px; width:140px; height:140px; border-radius:12px;" />
+</div>
             <div style="min-width: 0;">
               <div class="small">Share link</div>
               <div class="link" id="shareLinkText">—</div>
