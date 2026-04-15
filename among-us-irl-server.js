@@ -47,7 +47,11 @@ function publicPlayer(p, viewerId, isAdmin) {
     id: p.id,
     name: p.name,
     connected: p.connected,
-    role: p.id === viewerId ? p.role : undefined,    isAdmin: !!p.isAdmin,
+
+    // 🔥 každý vidí JEN svoji roli
+    role: p.id === viewerId ? p.role : undefined,
+
+    isAdmin: !!p.isAdmin,
   };
 }
 
@@ -457,7 +461,7 @@ const page = String.raw`<!doctype html>
           <div class="codebox" style="margin-top:10px;">
           <div style="margin-top:12px; text-align:center;">
   <div class="small">Scan to join</div>
-  <img id="qrCode" style="margin-top:8px; width:140px; height:140px; border-radius:12px;" />
+  <img id="qrCode" style="margin-top:8px; width:140px; height:140px;" />
 </div>
             <div style="min-width: 0;">
               <div class="small">Share link</div>
@@ -597,14 +601,15 @@ const page = String.raw`<!doctype html>
     }
 
     function updateUI(data) {
-      state.current = data;
-      state.roomId = data.roomId;
-      state.roomLink = data.shareUrl || (location.origin + '/?room=' + encodeURIComponent(data.roomId));
+      state.roomLink = data.shareUrl
+  ? location.origin + data.shareUrl
+  : location.origin + '/?room=' + encodeURIComponent(data.roomId);
 
-      roomBadge.textContent = data.roomId ? 'Room ' + data.roomId : 'No room';
-      el('roomCodeText').textContent = data.roomId || '—';
-      el('shareLinkText').textContent = state.roomLink;
-      const qr = el('qrCode');
+roomBadge.textContent = data.roomId ? 'Room ' + data.roomId : 'No room';
+el('roomCodeText').textContent = data.roomId || '—';
+el('shareLinkText').textContent = state.roomLink;
+
+const qr = document.getElementById('qrCode');
 if (qr && state.roomLink) {
   qr.src = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(state.roomLink);
 }
