@@ -174,6 +174,8 @@ function createRoomWithAdmin(name) {
     started: false,
     meeting: false,
     settings: { impostors: 1, crewmates: 1 },
+    lastMeeting: 0,
+meetingCooldown: 30000, // 30s
     players: [
       {
         id: adminPlayerId,
@@ -656,8 +658,15 @@ if (qr && state.roomLink) {
       renderPlayers(data.players, me ? me.id : null);
 
       if (meeting && !state.meetingWasActive) {
-        playAlarm();
-      }
+  playAlarm();
+
+  if (Notification.permission === 'granted') {
+    new Notification("🚨 MEETING!", {
+      body: "Get yoo ass in the meeting room",
+      icon: "https://cdn-icons-png.flaticon.com/512/1827/1827349.png"
+    });
+  }
+}
       state.meetingWasActive = meeting;
 
       if (!started && me) {
@@ -832,6 +841,12 @@ if (qr && state.roomLink) {
 
       if (admin) state.adminToken = admin;
 
+    if (Notification.permission !== 'granted') {
+  document.body.addEventListener('click', () => {
+    Notification.requestPermission();
+  }, { once: true });
+}
+
       if (room && player) {
         state.roomId = room;
         state.playerId = player;
@@ -924,12 +939,21 @@ function handleApiStart(req, res, body) {
 
 function handleApiMeeting(req, res, body) {
   const room = ensureRoom(String(body.roomId || '').toUpperCase());
+
   if (!room.started) {
-    const err = new Error('Start the game first.');
-    err.statusCode = 400;
-    throw err;
+    throw new Error('Start the game first.');
   }
+
+  const now = Date.now();
+
+  if (now - room.lastMeeting < room.meetingCooldown) {
+    const remaining = Math.ceil((room.meetingCooldown - (now - room.lastMeeting)) / 1000);
+    throw new Error(`Meeting cooldown: wait ${remaining}s`);
+  }
+
+  room.lastMeeting = now;
   room.meeting = true;
+
   broadcast(room.roomId);
   json(res, 200, { ok: true });
 }
