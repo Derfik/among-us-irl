@@ -561,28 +561,57 @@ const page = String.raw`<!doctype html>
     }
 
     function playAlarm() {
-      try {
-        const AudioCtx = window.AudioContext || window.webkitAudioContext;
-        const ctx = new AudioCtx();
-        const gain = ctx.createGain();
-        gain.gain.value = 0.03;
-        gain.connect(ctx.destination);
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    const ctx = new AudioCtx();
 
-        let t = ctx.currentTime;
-        for (let i = 0; i < 6; i++) {
-          const osc = ctx.createOscillator();
-          osc.type = 'square';
-          osc.frequency.setValueAtTime(i % 2 === 0 ? 880 : 660, t);
-          osc.connect(gain);
-          osc.start(t);
-          osc.stop(t + 0.15);
-          t += 0.18;
-        }
-        setTimeout(function() { ctx.close().catch(function() {}); }, 2000);
-      } catch (e) {
-        console.warn('Audio failed', e);
+    const gain = ctx.createGain();
+    gain.gain.value = 0.08; // hlasitější než předtím
+    gain.connect(ctx.destination);
+
+    let t = ctx.currentTime;
+
+    // 🔥 3 vlny alarmu (siréna efekt)
+    for (let wave = 0; wave < 3; wave++) {
+      for (let i = 0; i < 10; i++) {
+        const osc = ctx.createOscillator();
+
+        // střídání frekvencí = siréna
+        const freq = i % 2 === 0 ? 900 : 600;
+
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(freq, t);
+
+        osc.connect(gain);
+        osc.start(t);
+        osc.stop(t + 0.18);
+
+        t += 0.2;
       }
+
+      // malá pauza mezi vlnami
+      t += 0.3;
     }
+
+    // zavřít audio context po ~5s
+    setTimeout(() => {
+      ctx.close().catch(() => {});
+    }, 5000);
+
+  } catch (e) {
+    console.warn('Audio failed', e);
+  }
+
+  // 📳 VIBRACE (mobil)
+  if (navigator.vibrate) {
+    navigator.vibrate([
+      300, 100,
+      300, 100,
+      500, 200,
+      500
+    ]);
+  }
+}
 
     async function api(path, body) {
       const res = await fetch(window.location.origin + path, {
@@ -659,7 +688,10 @@ if (qr && state.roomLink) {
 
       if (meeting && !state.meetingWasActive) {
   playAlarm();
-
+document.body.style.backgroundColor = '#ff0000';
+setTimeout(() => {
+  document.body.style.backgroundColor = '';
+}, 3000);
   if (Notification.permission === 'granted') {
     new Notification("🚨 MEETING!", {
       body: "Get yoo ass in the meeting room",
