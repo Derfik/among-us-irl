@@ -267,11 +267,13 @@ const page = String.raw`<!doctype html>
     }
     .brand { display:flex; gap:12px; align-items:center; }
     .logo {
-      width: 46px; height: 46px; border-radius: 16px;
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
-      display:grid; place-items:center; font-weight: 900; color:#fff; letter-spacing:.5px;
-      box-shadow: 0 10px 30px rgba(124,92,255,.35);
-    }
+  width: 46px;
+  height: 46px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  overflow: hidden; /* 🔥 důležité */
+}
     h1 { margin: 0; font-size: 20px; }
     .sub { color: var(--muted); font-size: 13px; margin-top: 3px; }
     .grid { display:grid; grid-template-columns: 1.2fr .8fr; gap: 16px; margin-top: 16px; }
@@ -392,7 +394,9 @@ const page = String.raw`<!doctype html>
   <div class="wrap">
     <div class="topbar">
       <div class="brand">
-        <div class="logo">AI</div>
+       <div class="logo">
+  <img src="https://upload.wikimedia.org/wikipedia/en/9/9a/Among_Us_character.png" style="width:28px; height:28px;" />
+</div>
         <div>
           <h1>Among Us IRL</h1>
           <div class="sub">Role assignment, live meeting alarm, and admin controls</div>
