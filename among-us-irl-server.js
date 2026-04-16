@@ -42,15 +42,30 @@ function getRoom(roomId) {
   return rooms.get(String(roomId || '').toUpperCase()) || null;
 }
 
-function publicPlayer(p, viewerId, isAdmin) {
+function publicPlayer(p, viewerId, isAdmin, room) {
+  const viewer = room.players.find(pl => pl.id === viewerId);
+
+  let role = undefined;
+
+  // 👇 vidím svoji roli vždy
+  if (p.id === viewerId) {
+    role = p.role;
+  }
+
+  // 👇 impostor vidí ostatní impostory
+  const isImpostor = viewer && (viewer.role === 'impostor' || viewer.role === 'blackmailer');
+
+if (p.id === viewerId) {
+  role = p.role;
+} else if (isImpostor && (p.role === 'impostor' || p.role === 'blackmailer')) {
+  role = p.role;
+}
+
   return {
     id: p.id,
     name: p.name,
     connected: p.connected,
-
-    // 🔥 každý vidí JEN svoji roli
-    role: p.id === viewerId ? p.role : undefined,
-
+    role,
     isAdmin: !!p.isAdmin,
   };
 }
@@ -73,7 +88,7 @@ function roomState(room, viewerId = null) {
           role: viewer.role || null,
         }
       : null,
-    players: room.players.map(p => publicPlayer(p, viewerId, isAdmin)),
+   players: room.players.map(p => publicPlayer(p, viewerId, isAdmin, room)),
     counts: {
       total: room.players.length,
       connected: room.players.filter(p => p.connected).length,
@@ -145,20 +160,26 @@ function assignRoles(room, impostorsCount, crewmatesCount) {
     throw new Error('There must be at least 1 crewmate.');
   }
 
-  // 🔥 admin je normální hráč → JE V TOM
+  // 🎲 shuffle hráčů
   const shuffled = [...activePlayers].sort(() => Math.random() - 0.5);
 
-  const impostors = new Set(
-    shuffled.slice(0, impostorsCount).map(p => p.id)
-  );
+  // 👇 vyber impostory
+  const impostorPlayers = shuffled.slice(0, impostorsCount);
 
-  for (const p of room.players) {
-    if (!p.connected) {
-      p.role = null;
-      continue;
-    }
+  // 👇 všem nejdřív nastav default role
+  for (const p of activePlayers) {
+    p.role = 'crewmate';
+  }
 
-    p.role = impostors.has(p.id) ? 'impostor' : 'crewmate';
+  // 👇 nastav impostory
+  impostorPlayers.forEach(p => {
+    p.role = 'impostor';
+  });
+
+  // 🔥 BLACKMAILER LOGIKA
+  if (impostorPlayers.length >= 2) {
+    const randomIndex = Math.floor(Math.random() * impostorPlayers.length);
+    impostorPlayers[randomIndex].role = 'blackmailer';
   }
 }
 
