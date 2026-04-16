@@ -395,7 +395,8 @@ const page = String.raw`<!doctype html>
     <div class="topbar">
       <div class="brand">
        <div class="logo">
-  <img src="https://upload.wikimedia.org/wikipedia/en/9/9a/Among_Us_character.png" style="width:28px; height:28px;" />
+  <img src="https://static.wikia.nocookie.net/among-us-wiki/images/0/0b/Red.png" 
+       style="width:28px; height:28px;" />
 </div>
         <div>
           <h1>Among Us IRL</h1>
