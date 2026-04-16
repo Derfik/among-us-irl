@@ -43,6 +43,7 @@ function getRoom(roomId) {
 }
 
 function publicPlayer(p, viewerId, isAdmin, room) {
+  alive: p.alive,
   const viewer = room.players.find(pl => pl.id === viewerId);
 
   let role = undefined;
@@ -215,14 +216,14 @@ meetingCooldown: 30000, // 30s
 }
 
 function joinRoom(room, name, isAdmin = false) {
-  const playerId = id(6);
   const player = {
-    id: playerId,
-    name: String(name || 'Player').trim().slice(0, 24) || 'Player',
-    connected: true,
-    isAdmin: !!isAdmin,
-    role: null,
-  };
+  id: playerId,
+  name: String(name || 'Player').trim().slice(0, 24) || 'Player',
+  connected: true,
+  isAdmin: !!isAdmin,
+  role: null,
+  alive: true // 🔥 přidat
+};
   room.players.push(player);
   return player;
 }
@@ -394,10 +395,7 @@ const page = String.raw`<!doctype html>
   <div class="wrap">
     <div class="topbar">
       <div class="brand">
-       <div class="logo">
-  <img src="https://static.wikia.nocookie.net/among-us-wiki/images/0/0b/Red.png" 
-       style="width:28px; height:28px;" />
-</div>
+       <div class="logo">🚨</div>
         <div>
           <h1>Among Us IRL</h1>
           <div class="sub">Role assignment, live meeting alarm, and admin controls</div>
@@ -571,7 +569,7 @@ const page = String.raw`<!doctype html>
         let html = '';
         html += '<div>';
         html += '<div style="font-weight:800; font-size:16px;">';
-        html += escapeHtml(p.name);
+        html += escapeHtml(p.name) + (p.alive ? '' : ' 💀');
         if (p.id === meId) html += ' <span class="badge me">you</span>';
         html += '</div>';
         html += '<div class="small">' + (p.connected ? 'Connected' : 'Offline') + ' • ' + (p.isAdmin ? 'Admin' : 'Player') + '</div>';
@@ -707,7 +705,7 @@ if (qr && state.roomLink) {
 
       meetingOverlay.classList.toggle('show', meeting);
       meetingNotice.classList.toggle('hide', !meeting);
-      meetingBar.classList.toggle('show', !!me && started);
+      meetingBar.classList.toggle('show', !!me && started && me.alive);
       adminMeetingControls.classList.toggle('hide', !isAdmin);
 
       renderPlayers(data.players, me ? me.id : null);
@@ -987,6 +985,11 @@ function handleApiStart(req, res, body) {
 
   room.settings.impostors = impostors;
   room.settings.crewmates = crewmates;
+  room.players.forEach(p => {
+  if (p.connected) {
+    p.alive = true;
+  }
+});
   assignRoles(room, impostors, crewmates);
   room.started = true;
   room.meeting = false;
@@ -997,6 +1000,13 @@ function handleApiStart(req, res, body) {
 
 function handleApiMeeting(req, res, body) {
   const room = ensureRoom(String(body.roomId || '').toUpperCase());
+
+  // 🔥 NOVÉ
+  const player = room.players.find(p => p.id === body.playerId);
+
+  if (!player || !player.alive) {
+    throw new Error('Dead players cannot call meeting.');
+  }
 
   if (!room.started) {
     throw new Error('Start the game first.');
